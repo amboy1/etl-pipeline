@@ -1,0 +1,41 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: etl_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  web:
+    build: .
+    container_name: etl_web
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=True
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEFAULT_NUM_CHUNKS=${DEFAULT_NUM_CHUNKS:-4}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    container_name: etl_celery_worker
+    command: celery -A etl_project worker -l info --concurrency=${CELERY_CONCURRENCY:-8}
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_DEBUG=True
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-8}
+      - DEFAULT_NUM_CHUNKS=${DEFAULT_NUM_CHUNKS:-4}
+    depends_on:
+      - redis
+      - web
+    restart: unless-stopped

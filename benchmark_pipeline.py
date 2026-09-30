@@ -59,11 +59,11 @@ def main():
 
     file_size_mb = os.path.getsize(csv_path) / (1024 * 1024)
     print("=" * 70)
-    print(f"🚀 ЗАПУСК БЕНЧМАРКА ETL ПАЙПЛАЙНА")
+    print(f"ЗАПУСК БЕНЧМАРКА ETL ПАЙПЛАЙНА")
     print(f"   Файл: {csv_path} ({file_size_mb:.2f} MB)")
     print("=" * 70)
 
-    test_configs = [1, 2, 4]
+    test_configs = [1, 2, 4, 8]
     results = []
 
     for num_chunks in test_configs:
@@ -77,7 +77,7 @@ def main():
     base_time = results[0]["duration"]
 
     print("\n" + "=" * 70)
-    print("📊 ИТОГОВАЯ ТАБЛИЦА СРАВНЕНИЯ ПРОИЗВОДИТЕЛЬНОСТИ")
+    print("ИТОГОВАЯ ТАБЛИЦА СРАВНЕНИЯ ПРОИЗВОДИТЕЛЬНОСТИ")
     print("=" * 70)
     print(f"{'Воркеры/Чанки':<15} | {'Время (сек)':<12} | {'Строк / сек':<15} | {'Ускорение':<12}")
     print("-" * 70)
@@ -93,8 +93,8 @@ def main():
         )
 
     print("-" * 70)
-    print(f"✔ Проверка целостности: обработано строк во всех прогонах: {results[0]['rows_count']:,}")
-    print(f"✔ Финансовый итог: {results[0]['total_amount']:,.2f} руб.")
+    print(f"Проверка целостности: обработано строк во всех прогонах: {results[0]['rows_count']:,}")
+    print(f"Финансовый итог: {results[0]['total_amount']:,.2f} руб.")
     print("=" * 70)
 
 

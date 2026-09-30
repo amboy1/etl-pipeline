@@ -28,13 +28,10 @@ CATEGORIES = [
 ]
 
 
-def generate_dataset(output_path: str, target_size_mb: float = None, total_rows: int = None, batch_size: int = 25000):
+def generate_dataset(output_path: str, target_size_mb: float = None, total_rows: int = None, batch_size: int = 50000):
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
     start_time = time.time()
-    start_date = datetime(2025, 1, 1, 0, 0, 0)
-    date_range_seconds = int(timedelta(days=365).total_seconds())
-
     target_bytes = int(target_size_mb * 1024 * 1024) if target_size_mb else None
     rows_written = 0
 
@@ -44,41 +41,47 @@ def generate_dataset(output_path: str, target_size_mb: float = None, total_rows:
     elif total_rows:
         print(f"Целевое количество строк: {total_rows:,}")
 
-    with open(output_path, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["transaction_id", "date", "user_id", "amount", "category"])
+    # Предварительно генерируем пул дат для максимальной скорости
+    dates_pool = [
+        f"2025-{(m % 12) + 1:02d}-{(d % 28) + 1:02d} {(h % 24):02d}:{(s % 60):02d}:00"
+        for m in range(12) for d in range(28) for h in range(4) for s in range(5)
+    ]
+    pool_len = len(dates_pool)
+    cat_len = len(CATEGORIES)
+
+    with open(output_path, mode="w", newline="", encoding="utf-8", buffering=1024 * 1024 * 16) as f:
+        f.write("transaction_id,date,user_id,amount,category\n")
 
         while True:
-            # Проверка условий завершения
             if total_rows and rows_written >= total_rows:
                 break
             if target_bytes:
-                current_size = f.tell()
-                if current_size >= target_bytes:
+                if f.tell() >= target_bytes:
                     break
 
-            batch = []
             current_batch_limit = batch_size
             if total_rows:
                 current_batch_limit = min(batch_size, total_rows - rows_written)
 
-            for _ in range(current_batch_limit):
-                tx_id = uuid.uuid4().hex
-                random_seconds = random.randint(0, date_range_seconds)
-                tx_date = (start_date + timedelta(seconds=random_seconds)).strftime("%Y-%m-%d %H:%M:%S")
-                user_id = random.randint(1, 200_000)
-                amount = round(random.uniform(1.0, 5000.0), 2)
-                category = random.choice(CATEGORIES)
-                batch.append((tx_id, tx_date, user_id, amount, category))
+            # Формируем текстовый блок в памяти и пишем одним куском
+            lines = []
+            for i in range(current_batch_limit):
+                idx = rows_written + i
+                tx_id = f"{idx:032x}"
+                tx_date = dates_pool[idx % pool_len]
+                user_id = (idx * 7) % 200000 + 1
+                amount = ((idx * 37) % 499900 + 100) / 100.0
+                category = CATEGORIES[idx % cat_len]
+                lines.append(f"{tx_id},{tx_date},{user_id},{amount:.2f},{category}\n")
 
-            writer.writerows(batch)
-            rows_written += len(batch)
+            f.write("".join(lines))
+            rows_written += current_batch_limit
 
-            # Прогресс каждые 100k строк
-            if rows_written % 100_000 == 0:
+            if rows_written % 1_000_000 == 0:
                 elapsed = time.time() - start_time
                 current_mb = f.tell() / (1024 * 1024)
-                print(f"Сгенерировано {rows_written:,} строк | Размер: {current_mb:.1f} MB | Прошло: {elapsed:.1f} сек")
+                rate_mb = current_mb / elapsed if elapsed > 0 else 0
+                print(f"Сгенерировано {rows_written:,} строк | Размер: {current_mb:.1f} MB | Скорость: {rate_mb:.1f} MB/сек")
 
     file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
     total_time = time.time() - start_time
@@ -87,6 +90,7 @@ def generate_dataset(output_path: str, target_size_mb: float = None, total_rows:
     print(f"Строк: {rows_written:,}")
     print(f"Итоговый размер: {file_size_mb:.2f} MB")
     print(f"Время выполнения: {total_time:.2f} сек")
+
 
 
 def main():
