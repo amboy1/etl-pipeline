@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ ETL Pipeline Real-Time Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.85);
+            --bg-card-hover: rgba(24, 34, 53, 0.95);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(99, 102, 241, 0.3);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #6366f1;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            --cyan-glow: linear-gradient(90deg, #06b6d4, #3b82f6);
+            --emerald-glow: linear-gradient(90deg, #10b981, #059669);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(217, 70, 239, 0.08) 0%, transparent 40%);
+            background-attachment: fixed;
+            padding-bottom: 60px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--accent-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .brand h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #d1d5db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 14px var(--success); }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        /* STATS BAR */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-highlight);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* UPLOAD & CONTROLS SECTION */
+        .upload-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            border-radius: var(--card-radius);
+            padding: 28px;
+            margin-bottom: 35px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent-gradient);
+        }
+
+        .upload-layout {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .upload-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dropzone {
+            border: 2px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(99, 102, 241, 0.03);
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #a855f7;
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .dropzone-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .dropzone h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .dropzone p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .controls-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 260px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .chunk-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .chunk-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chunk-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-upload {
+            background: var(--accent-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 13px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+            transition: all 0.2s;
+        }
+
+        .btn-upload:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-upload:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* FILES LIST */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .file-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 22px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+
+        .file-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .file-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: var(--text-muted);
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .badge-pending { background: rgba(156, 163, 175, 0.15); color: #d1d5db; border: 1px solid rgba(156, 163, 175, 0.3); }
+        .badge-processing { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); animation: glow 1.5s infinite alternate; }
+        .badge-completed { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-failed { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+            to { box-shadow: 0 0 14px rgba(59, 130, 246, 0.5); }
+        }
+
+        /* PROGRESS BAR */
+        .progress-container {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+            margin: 12px 0;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--cyan-glow);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-bar.completed {
+            background: var(--emerald-glow);
+        }
+
+        .progress-bar.animated {
+            background-size: 30px 30px;
+            background-image: linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.15) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.15) 50%,
+                rgba(255, 255, 255, 0.15) 75%,
+                transparent 75%,
+                transparent
+            );
+            animation: stripes 1s linear infinite;
+        }
+
+        @keyframes stripes {
+            from { background-position: 0 0; }
+            to { background-position: 30px 0; }
+        }
+
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
+        .progress-meta-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* METRICS ROW IN CARD */
+        .file-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .metric-item span:first-child {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .metric-item span:last-child {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* CATEGORIES ACCORDION */
+        .categories-toggle {
+            margin-top: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .categories-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .cat-chip {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .cat-chip .cat-name { color: var(--text-muted); text-transform: capitalize; }
+        .cat-chip .cat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #34d399; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">⚡</div>
+            <div>
+                <h1>ETL Pipeline Dashboard</h1>
+                <p>Distributed MapReduce & Real-Time Redis Tracking</p>
+            </div>
+        </div>
+        <div class="system-status">
+            <div class="status-chip">
+                <span class="pulse-dot"></span>
+                <span>Redis In-Memory Engine: Active</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Всего файлов</div>
+            <div class="stat-value" id="stat-total-files">{{ total_files }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Успешно обработано</div>
+            <div class="stat-value" id="stat-completed-files" style="color: var(--success);">{{ completed_files }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Архитектура</div>
+            <div class="stat-value" style="font-size: 20px; color: #a855f7;">Celery Chord + Redis</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Батч прогресса</div>
+            <div class="stat-value" style="font-size: 20px; color: #38bdf8;">10,000 строк / батч</div>
+        </div>
+    </div>
+
+    <!-- UPLOAD PANEL -->
+    <div class="upload-section">
+        <div class="upload-layout">
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+                <div class="dropzone-icon">📁</div>
+                <h3 id="dropzone-text">Перетащите CSV-файл сюда или кликните для выбора</h3>
+                <p id="dropzone-sub">Поддерживаются файлы любого размера (10 МБ – 2+ ГБ)</p>
+                <input type="file" id="file-input" accept=".csv" style="display: none;" onchange="handleFileSelected(event)">
+            </div>
+
+            <div class="controls-panel">
+                <div class="control-group">
+                    <label>Количество параллельных воркеров (чанков):</label>
+                    <div class="chunk-selector">
+                        <button class="chunk-btn" onclick="selectChunks(1, this)">1</button>
+                        <button class="chunk-btn" onclick="selectChunks(2, this)">2</button>
+                        <button class="chunk-btn active" onclick="selectChunks(4, this)">4</button>
+                        <button class="chunk-btn" onclick="selectChunks(8, this)">8</button>
+                    </div>
+                </div>
+
+                <button class="btn-upload" id="btn-upload" onclick="startUpload()" disabled>
+                    <span>🚀 Запустить обработку</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILES LIST -->
+    <div class="section-header">
+        <h2>Журнал файлов и Live-трекинг</h2>
+    </div>
+
+    <div id="files-container">
+        {% for file in files %}
+        <div class="file-card" id="file-card-{{ file.id }}" data-file-id="{{ file.id }}" data-status="{{ file.status }}">
+            <div class="file-header">
+                <div class="file-title">
+                    <span class="file-id">#{{ file.id }}</span>
+                    <span class="file-name">{{ file.file.name }}</span>
+                </div>
+                <span class="badge badge-{{ file.status|lower }}" id="badge-{{ file.id }}">
+                    {{ file.get_status_display }}
+                </span>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar {% if file.status == 'PROCESSING' %}animated{% elif file.status == 'COMPLETED' %}completed{% endif %}" 
+                     id="progress-bar-{{ file.id }}" 
+                     style="width: {{ file.progress_percent }}%;"></div>
+            </div>
+
+            <div class="progress-meta">
+                <span>Прогресс: <span class="progress-meta-value" id="percent-text-{{ file.id }}">{{ file.progress_percent }}%</span></span>
+                <span>Обработано: <span class="progress-meta-value" id="rows-text-{{ file.id }}">{{ file.processed_rows|default:0 }}</span> / {{ file.total_rows|default:"-" }} строк</span>
+            </div>
+
+            <div class="file-metrics">
+                <div class="metric-item">
+                    <span>Сумма транзакций</span>
+                    <span id="amount-{{ file.id }}">{{ file.total_amount|floatformat:2 }} руб.</span>
+                </div>
+                <div class="metric-item">
+                    <span>Длительность</span>
+                    <span id="duration-{{ file.id }}">{{ file.duration_seconds|default:"-" }} сек.</span>
+                </div>
+                <div class="metric-item">
+                    <span>Celery Task ID</span>
+                    <span style="font-size: 11px; opacity: 0.8;" id="task-id-{{ file.id }}">{{ file.celery_task_id|default:"-"|truncatechars:18 }}</span>
+                </div>
+                <div class="metric-item">
+                    <span>Создан</span>
+                    <span>{{ file.created_at|date:"H:i:s d.m.Y" }}</span>
+                </div>
+            </div>
+
+            {% if file.category_summary %}
+            <button class="categories-toggle" onclick="toggleCategories({{ file.id }})">
+                📊 Показать категории ▼
+            </button>
+            <div class="categories-grid hidden" id="categories-grid-{{ file.id }}">
+                {% for cat, val in file.category_summary.items %}
+                <div class="cat-chip">
+                    <span class="cat-name">{{ cat }}</span>
+                    <span class="cat-val">{{ val|floatformat:2 }} руб.</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            Нет загруженных файлов. Загрузите первый CSV-файл выше.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    let selectedFile = null;
+    let selectedChunksCount = 4;
+    const activePollers = new Map();
+
+    function selectChunks(count, btn) {
+        selectedChunksCount = count;
+        document.querySelectorAll('.chunk-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function handleFileSelected(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        selectedFile = file;
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        document.getElementById('dropzone-text').innerText = `Выбран файл: ${file.name} (${sizeMb} MB)`;
+        document.getElementById('dropzone-sub').innerText = 'Нажмите "Запустить обработку" для старта';
+        document.getElementById('btn-upload').removeAttribute('disabled');
+    }
+
+    // Drag & Drop
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            document.getElementById('file-input').files = e.dataTransfer.files;
+            handleFileSelected({ target: { files: e.dataTransfer.files } });
+        }
+    });
+
+    async function startUpload() {
+        if (!selectedFile) return;
+
+        const btn = document.getElementById('btn-upload');
+        btn.setAttribute('disabled', 'true');
+        btn.innerText = 'Загрузка...';
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('num_chunks', selectedChunksCount);
+        formData.append('autostart', 'true');
+
+        try {
+            const resp = await fetch('/api/upload/', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+            if (data.success) {
+                // Перезагружаем или добавляем карточку и запускаем polling
+                window.location.reload();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось загрузить файл'));
+                btn.removeAttribute('disabled');
+                btn.innerText = '🚀 Запустить обработку';
+            }
+        } catch (err) {
+            alert('Сетевая ошибка: ' + err.message);
+            btn.removeAttribute('disabled');
+            btn.innerText = '🚀 Запустить обработку';
+        }
+    }
+
+    function toggleCategories(fileId) {
+        const grid = document.getElementById(`categories-grid-${fileId}`);
+        if (grid) grid.classList.toggle('hidden');
+    }
+
+    // Real-Time Polling Engine
+    function startPollingFile(fileId) {
+        if (activePollers.has(fileId)) return;
+
+        const intervalId = setInterval(async () => {
+            try {
+                const resp = await fetch(`/api/progress/${fileId}/`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                const bar = document.getElementById(`progress-bar-${fileId}`);
+                const percentText = document.getElementById(`percent-text-${fileId}`);
+                const rowsText = document.getElementById(`rows-text-${fileId}`);
+                const badge = document.getElementById(`badge-${fileId}`);
+
+                if (rowsText) {
+                    rowsText.innerText = Number(data.processed_rows || 0).toLocaleString();
+                }
+
+                if (badge) {
+                    badge.className = `badge badge-${data.status.toLowerCase()}`;
+                    badge.innerText = data.status === 'PROCESSING' ? 'В обработке' : (data.status === 'COMPLETED' ? 'Завершено' : data.status);
+                }
+
+                if (bar) {
+                    if (data.status === 'PROCESSING') {
+                        bar.classList.add('animated');
+                        // Если процент неизвестен (стриминг по байтам), показываем живую активность
+                        const percent = data.progress_percent || Math.min(95, Math.round((data.processed_rows / 1000000) * 100) || 50);
+                        bar.style.width = `${percent}%`;
+                        if (percentText) percentText.innerText = `${percent}% (Live)`;
+                    } else if (data.status === 'COMPLETED') {
+                        bar.classList.remove('animated');
+                        bar.classList.add('completed');
+                        bar.style.width = '100%';
+                        if (percentText) percentText.innerText = '100%';
+
+                        // Останавливаем поллинг
+                        clearInterval(intervalId);
+                        activePollers.delete(fileId);
+
+                        // Запрашиваем полные данные для обновления сумм
+                        fetchFullDetails(fileId);
+                    } else if (data.status === 'FAILED') {
+                        bar.classList.remove('animated');
+                        bar.style.background = 'var(--danger)';
+                        clearInterval(intervalId);
+                        activePollers.delete(fileId);
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error for file", fileId, err);
+            }
+        }, 400);
+
+        activePollers.set(fileId, intervalId);
+    }
+
+    async function fetchFullDetails(fileId) {
+        try {
+            const resp = await fetch(`/api/details/${fileId}/`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            const amountEl = document.getElementById(`amount-${fileId}`);
+            const durationEl = document.getElementById(`duration-${fileId}`);
+
+            if (amountEl) amountEl.innerText = `${Number(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})} руб.`;
+            if (durationEl) durationEl.innerText = `${data.duration_seconds || '-'} сек.`;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Инициализация поллинга для всех файлов со статусом PROCESSING или PENDING
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.file-card').forEach(card => {
+            const status = card.getAttribute('data-status');
+            const fileId = card.getAttribute('data-file-id');
+            if (status === 'PROCESSING' || status === 'PENDING') {
+                startPollingFile(fileId);
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
